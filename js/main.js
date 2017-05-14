@@ -3,6 +3,7 @@ var visualization = {
 		element = config.element,
 		colors = config.colors,
 		data = config.data,
+		time = config.time,
 		margin = { top: 20, right: 20, bottom: 30, left: 50 },
 		width = 900 - margin.left - margin.right,
 		height = 400 - margin.top - margin.bottom,
@@ -80,6 +81,16 @@ var visualization = {
 			.attr("class", "axis axis-x")
 			.attr("transform", "translate(0," + (height+5) + ")")
 			.call(xAxis);*/
+
+		// append time axis
+		svg.append("line")
+			.attr("class", "time")
+			.attr("x1", xScale(time))
+			.attr("y1", 0)
+			.attr("x2", xScale(time))
+			.attr("y2", height)
+			.attr("stroke-width", 3)
+			.attr("stroke", "#000");
 	}
 }
 
@@ -89,55 +100,7 @@ d3.json("data/game-plan.json", function(data) {
 	visualization.drawPlan({
 		data: plandata,
 		element: 'chart',
-		colors: colors
+		colors: colors,
+		time: 0
 	});
 });
-
-/*function generateChart(dataset, w, h) {
-	var xScale = d3.scale.ordinal()
-				.domain(d3.range(10))
-				.rangeRoundBands([0, w], 0.05);
-
-	var yScale = d3.scale.linear()
-				.domain([0, d3.max(dataset, function(d) {
-					var time = d.duration.split(":");
-					var seconds = (time[0]) * 60 * 60 + (time[1]) * 60 + (time[2]); 
-					return seconds;
-				})])
-				.range([0, h]);
-
-	//Define key function, to be used when binding data
-	var key = function(d) {
-		return d.team;
-	};
-
-	var svg = d3.select("body")
-		.append("svg")
-		.attr("width", w)
-		.attr("height", h);
-
-	svg.selectAll("rect")
-   .data(dataset, key)		//Bind data with custom key function
-   .enter()
-   .append("rect")
-   .attr("x", function(d, i) {
-		return xScale(i);
-   })
-   .attr("y", function(d) {
-		var time = d.duration.split(":");
-		var seconds = (time[0]) * 60 * 60 + (time[1]) * 60 + (time[2]);
-		return h - yScale(seconds);
-   })
-   .attr("width", xScale.rangeBand())
-   
-   .attr("height", function(d) {
-		var time = d.duration.split(":");
-		var seconds = (time[0]) * 60 * 60 + (time[1]) * 60 + (time[2]);
-		return yScale(seconds);
-   })
-   .attr("fill", function(d) {
-		var colors = ["blue", "red", "yellow", "green", "orange", "pink", "purple", "aqua"];
-		console.log(d.team);
-		return colors[d.team];
-   });
-}*/
