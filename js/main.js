@@ -2,15 +2,13 @@ var visualization = {
 	drawPlan: function(config) {
 		element = config.element,
 		colors = config.colors,
-		boundColors = config.boundColors,
 		data = config.data,
 		margin = { top: 20, right: 20, bottom: 30, left: 50 },
 		width = 900 - margin.left - margin.right,
-		height = 500 - margin.top - margin.bottom,
+		height = 400 - margin.top - margin.bottom,
 		xScale = d3.scaleLinear().rangeRound([0, width]),
 		yScale = d3.scaleBand().rangeRound([height, 0]).padding(0.02),
 		getColor = d3.scaleOrdinal(colors),
-		getBoundColor = d3.scaleOrdinal(boundColors),
 		xAxis = d3.axisBottom(xScale),
 		yAxis = d3.axisLeft(yScale),
 		svg = d3.select("#" + element).append("svg")
@@ -35,14 +33,15 @@ var visualization = {
 			.enter().append("pattern")
 			.attr("id", function(d, i) { return "diagonalHatch"+i; })
 			.attr("patternUnits", "userSpaceOnUse")
-			.attr("width", "5")
+			.attr("width", "7")
 			.attr("height", "4")
 			.attr("patternTransform", "rotate(45)");
 		pattern.append("rect")
-			.attr("width", "2")
+			.attr("width", "3")
 			.attr("height", "4")
 			.attr("transform", "translate(0,0)")
-			.attr("fill", function(d, i) { return getColor(i); });
+			.attr("fill", function(d, i) { return getColor(i); })
+			.attr("opacity", "0.3");
 
 		// create segment column for each level
 		var layer = svg.selectAll(".layer")
@@ -68,7 +67,7 @@ var visualization = {
 		  .attr("x", function(d) { return xScale(d[1]); })
 		  .attr("height", yScale.bandwidth())
 		  .attr("width", "3")
-		  .attr("fill", function(d, i) { return getBoundColor(d3.select(this.parentNode).datum().index); });
+		  .attr("fill", function(d, i) { return getColor(d3.select(this.parentNode).datum().index); });
 
 		// append y axis
 		svg.append("g")
@@ -86,13 +85,11 @@ var visualization = {
 
 d3.json("data/game-plan.json", function(data) {
 	var plandata = data;
-	colors = ["#95c3cf", "#90cda3", "#f8c8a1", "#edaaa4"];
-	boundColors = ["#0e6f90", "#158136", "#ec7e26", "#d82f36"];
+	colors = ["#0e6f90", "#158136", "#ec7e26", "#d82f36"];
 	visualization.drawPlan({
 		data: plandata,
 		element: 'chart',
-		colors: colors,
-		boundColors: boundColors
+		colors: colors
 	});
 });
 
