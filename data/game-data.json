@@ -12,7 +12,7 @@
 				{
 					"type" : "hint",
 					"name" : "Hint 1",
-					"time" : "250"
+					"time" : 250
 				},
 				{
 					"type" : "skip",
@@ -32,7 +32,7 @@
 				{
 					"type" : "hint",
 					"name" : "Hint 1",
-					"time" : "300"
+					"time" : 300
 				},
 				{
 					"type" : "hint",
@@ -70,12 +70,12 @@
 				{
 					"type" : "solution",
 					"name" : "Solution 1",
-					"time" : "800"
+					"time" : 800
 				},
 				{
 					"type" : "skip",
 					"name" : "Level skipped",
-					"time" : 1050
+					"time" : 1850
 				}
 
 			]
@@ -117,7 +117,7 @@
 			{
 					"type" : "hint",
 					"name" : "Hint 3",
-					"time" : "1900"
+					"time" : 1900
 				}
 			]
 		},

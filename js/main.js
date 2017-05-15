@@ -32,8 +32,11 @@ var visualization = {
 		xScale.domain([0, planDomain]);
 		yScale.domain(plandata.teams.map(function(d) { return d.team; }));	
 
+		plan = svg.append("g")
+			.attr("class", "plan");
+
 		// create hatched pattern defs
-		defs = svg.append("defs");
+		defs = plan.append("defs");
 		var pattern = defs.selectAll("pattern")
 			.data(plandata.keys)
 			.enter().append("pattern")
@@ -50,14 +53,14 @@ var visualization = {
 			.attr("opacity", "0.3");
 
 		// create segment column for each level
-		var layer = svg.selectAll(".plan-layer")
+		planLayers = plan.selectAll(".plan-layer")
 			.data(layers)
 			.enter().append("g")
 			.attr("class", "plan-layer")
 			.style("fill", function(d, i) { return "url(#diagonalHatch" + i +")"; });
 
 		// draw segment for each team
-		layer.selectAll("rect.plan-segment")
+		planSegments = planLayers.selectAll(".plan-segment")
 		  .data(function(d) {return d; })
 		  .enter().append("rect")
 		  .attr("y", function(d) { return yScale(d.data.team); })
@@ -123,7 +126,7 @@ var visualization = {
 
 		// draw segment for each team
 		layer.selectAll("rect.game-segment")
-		  .data(function(d) {return d; })
+		  .data(function(d) { return d; })
 		  .enter().append("rect")
 		  .attr("y", function(d) { return yScale(d.data.team); })
 		  .attr("x", function(d) {
@@ -146,10 +149,98 @@ var visualization = {
 		 timeline.attr("x1", xScale(time)+2)
 		 	.attr("x2", xScale(time)+2);
 
-		// redraw bounds to top
-		svg.append(function() {
-		  return bounds.remove().node();
-		});
+		// move bounds to top
+		bounds.raise();
+
+		// update plan according to actual data
+		this.updatePlan(layers);
+
+		events = svg.append("g")
+            .attr("class", "events");
+        var eventLayers = events.selectAll("g.event-layer")
+        	.data(gamedata.teams)
+        	.enter().append("g");
+        eventLayers.selectAll("rect.event")
+        	.data(function(d, i) { return d.events; })
+        	.enter().append("rect")
+            .attr("x", function(d) {
+            	return xScale(d.time);
+            })
+            .attr("y", function(d) {
+            	return yScale(d3.select(this.parentNode).datum().team) + 5;
+            })
+            .attr("width", 20)
+            .attr("height", 20)
+            .attr("fill", function(d, i) {
+            	var team = d3.select(this.parentNode).datum().team,
+            		data = d3.select(this.parentNode).datum(),
+            		level = 0,
+            		durationSum = 0;
+            	gamedata.keys.forEach(function(levelKey) {
+            		var duration = parseInt(data[levelKey]);
+                    if (!duration) return;
+                    durationSum += duration;
+                    if (d.time <= durationSum) return;
+                    level += 1;
+                });
+            	return getColor(level);
+            });
+
+       /* gamedata.teams.forEach(function(team, i) {
+            var svgTeam = events.append("g")
+                .attr("class", "events-team-"+i);
+            team.events.forEach(function(event) {
+                var level = 0;
+                var durationSum = 0;
+                gamedata.keys.forEach(function(levelKey) {
+                    var duration = parseInt(team[levelKey]);
+                    if (!duration) {
+                        return;
+                    }
+                    durationSum += duration;
+                    if (event.time < durationSum) {
+                        return;
+                    }
+                    level += 1;
+                });
+                svgTeam.append("rect")
+                    .attr("class", event.type)
+                    .attr("x", xScale(event.time))
+                    .attr("y", yScale(team.team))
+                    .attr("width", 20)
+                    .attr("height", 20)
+                    .attr("fill", getColor(level));
+            });
+        });*/
+	},
+	updatePlan: function(layersdata) {
+		// move plan to top
+		plan.raise();
+
+		var offset = [];
+		var working = [];
+		planSegments
+			.attr("opacity", function(d,i) {
+				var levelIndex = d3.select(this.parentNode).datum().index,
+					teamIndex = i,
+					currentData = layersdata[levelIndex][teamIndex];
+
+				if(isNaN(currentData[1])) {
+					working[teamIndex] = true;
+				}
+				return (working[teamIndex]) ? 1 : 0;
+			})
+			.attr("x", function(d, i) {
+				var levelIndex = d3.select(this.parentNode).datum().index,
+					teamIndex = i,
+					currentData = layersdata[levelIndex][teamIndex];
+
+				if(isNaN(currentData[1])) {
+					offset[teamIndex] = currentData[0] - d[0];
+				}
+					
+				return (offset[teamIndex] != undefined) ? xScale(d[0] + offset[teamIndex]) : xScale(d[0]);
+			});
 	}
 }
 
