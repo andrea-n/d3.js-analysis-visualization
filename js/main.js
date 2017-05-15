@@ -4,18 +4,18 @@ var visualization = {
 		colors = config.colors,
 		plandata = config.data,
 		time = config.time,
-		margin = { top: 20, right: 20, bottom: 30, left: 50 },
-		width = 900 - margin.left - margin.right,
-		height = 400 - margin.top - margin.bottom,
+		padding = { top: 20, right: 20, bottom: 20, left: 80 },
+		width = 900 - padding.left - padding.right,
+		height = 400 - padding.top - padding.bottom,
 		xScale = d3.scaleLinear().rangeRound([0, width]),
 		yScale = d3.scaleBand().rangeRound([height, 0]).padding(0.02),
 		xAxis = d3.axisBottom(xScale),
 		yAxis = d3.axisLeft(yScale),
 		svg = d3.select("#" + element).append("svg")
-				.attr("width", width + margin.left + margin.right)
-				.attr("height", height + margin.top + margin.bottom)
+				.attr("width", width + padding.left + padding.right)
+				.attr("height", height + padding.top + padding.bottom)
 				.append("g")
-				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+				.attr("transform", "translate(" + padding.left + "," + padding.top + ")");
 
 		var colors = config.colors;
 		var getColor = d3.scaleOrdinal(colors);
@@ -66,26 +66,26 @@ var visualization = {
 		  .attr("width", function(d) { return xScale(d[1]) - xScale(d[0]) });
 
 		// draw bounding lines for each team
-		layer.selectAll("rect.plan-bound")
+		bounds = svg.append("g")
+			.attr("class", "bounds");
+		var boundGroups = bounds.selectAll(".bounds-layer")
+			.data(layers)
+			.enter().append("g")
+			.attr("class", "bounds-layer")
+			.style("fill", function(d, i) { return getColor(i); });
+		boundGroups.selectAll("rect.plan-bound")
 		  .data(function(d, i) { return d; })
 		  .enter().append("rect")
 		  .attr("y", function(d) { return yScale(d.data.team); })
 		  .attr("x", function(d) { return xScale(d[1]); })
 		  .attr("height", yScale.bandwidth())
-		  .attr("width", "3")
-		  .attr("fill", function(d, i) { return getColor(d3.select(this.parentNode).datum().index); });
+		  .attr("width", "3");
 
 		// append y axis
 		svg.append("g")
 			.attr("class", "axis axis-y")
 			.attr("transform", "translate(0,0)")
 			.call(yAxis);	
-
-		// append x axis
-		/*svg.append("g")
-			.attr("class", "axis axis-x")
-			.attr("transform", "translate(0," + (height+5) + ")")
-			.call(xAxis);*/
 
 		// append time axis
 		timeline = svg.append("line")
@@ -137,14 +137,19 @@ var visualization = {
 		  	}
 		  	else {
 		  		d3.select(this).attr("class", "game-segment-finished")
-		  						.attr("opacity", "0.5");
+		  						.attr("opacity", "0.3");
 		  		return xScale(d[1]) - xScale(d[0]);
 		  	}
 		  });
 
-		 // update time line
+		// update time line
 		 timeline.attr("x1", xScale(time)+2)
 		 	.attr("x2", xScale(time)+2);
+
+		// redraw bounds to top
+		svg.append(function() {
+		  return bounds.remove().node();
+		});
 	}
 }
 

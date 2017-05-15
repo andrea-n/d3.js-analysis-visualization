@@ -1,5 +1,5 @@
 /* chart properties */
-.chart { margin: 0 auto; width: 900px; }
+.chart { margin: 15vh auto; width: 900px; }
 
 /* axes */
 .axis .tick line { stroke: transparent; }
