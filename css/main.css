@@ -1,5 +1,5 @@
 /* chart properties */
-.chart { margin: 15vh auto; width: 900px; }
+.chart { margin: 15vh auto; width: 1000px; }
 
 /* axes */
 .axis .tick line { stroke: transparent; }
@@ -7,3 +7,6 @@
 
 /* timeline */
 .timeline { stroke: #2f2f2f; }
+
+/* icons */
+.icon, .events { font-family: 'FontAwesome'; }

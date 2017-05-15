@@ -4,8 +4,8 @@ var visualization = {
 		colors = config.colors,
 		plandata = config.data,
 		time = config.time,
-		padding = { top: 20, right: 20, bottom: 20, left: 80 },
-		width = 900 - padding.left - padding.right,
+		padding = { top: 20, right: 100, bottom: 20, left: 80 },
+		width = 1000 - padding.left - padding.right,
 		height = 400 - padding.top - padding.bottom,
 		xScale = d3.scaleLinear().rangeRound([0, width]),
 		yScale = d3.scaleBand().rangeRound([height, 0]).padding(0.02),
@@ -102,6 +102,7 @@ var visualization = {
 	drawData: function(config) {
 		time = config.time,
 		gamedata = config.data;
+		icons = config.icons;
 		
 		var colors = config.colors,
 			getColor = d3.scaleOrdinal(colors);
@@ -149,33 +150,30 @@ var visualization = {
 		 timeline.attr("x1", xScale(time)+2)
 		 	.attr("x2", xScale(time)+2);
 
-		// move bounds to top
-		bounds.raise();
-
 		// update plan according to actual data
 		this.updatePlan(layers);
 
+		// draw events
 		events = svg.append("g")
             .attr("class", "events");
         var eventLayers = events.selectAll("g.event-layer")
         	.data(gamedata.teams)
         	.enter().append("g");
-        eventLayers.selectAll("rect.event")
+        eventLayers.selectAll("text.event")
         	.data(function(d, i) { return d.events; })
-        	.enter().append("rect")
+        	.enter().append("text")
             .attr("x", function(d) {
-            	return xScale(d.time);
+            	return xScale(d.time) - yScale.bandwidth()*0.7;
             })
             .attr("y", function(d) {
-            	return yScale(d3.select(this.parentNode).datum().team) + 5;
+            	return yScale(d3.select(this.parentNode).datum().team) + yScale.bandwidth()*0.7;
             })
-            .attr("width", 20)
-            .attr("height", 20)
             .attr("fill", function(d, i) {
             	var team = d3.select(this.parentNode).datum().team,
             		data = d3.select(this.parentNode).datum(),
             		level = 0,
             		durationSum = 0;
+            	//TODO black color for current ("working") level
             	gamedata.keys.forEach(function(levelKey) {
             		var duration = parseInt(data[levelKey]);
                     if (!duration) return;
@@ -184,34 +182,13 @@ var visualization = {
                     level += 1;
                 });
             	return getColor(level);
-            });
+            })
+            .attr("font-family","FontAwesome")
+            .attr('font-size', function(d) { return yScale.bandwidth()/2; } )
+  			.text(function(d) { return icons[d.type]; });
 
-       /* gamedata.teams.forEach(function(team, i) {
-            var svgTeam = events.append("g")
-                .attr("class", "events-team-"+i);
-            team.events.forEach(function(event) {
-                var level = 0;
-                var durationSum = 0;
-                gamedata.keys.forEach(function(levelKey) {
-                    var duration = parseInt(team[levelKey]);
-                    if (!duration) {
-                        return;
-                    }
-                    durationSum += duration;
-                    if (event.time < durationSum) {
-                        return;
-                    }
-                    level += 1;
-                });
-                svgTeam.append("rect")
-                    .attr("class", event.type)
-                    .attr("x", xScale(event.time))
-                    .attr("y", yScale(team.team))
-                    .attr("width", 20)
-                    .attr("height", 20)
-                    .attr("fill", getColor(level));
-            });
-        });*/
+  		// move bounds to top
+		bounds.raise();
 	},
 	updatePlan: function(layersdata) {
 		// move plan to top
@@ -233,13 +210,25 @@ var visualization = {
 			.attr("x", function(d, i) {
 				var levelIndex = d3.select(this.parentNode).datum().index,
 					teamIndex = i,
-					currentData = layersdata[levelIndex][teamIndex];
+					currentData = layersdata[levelIndex][teamIndex],
+					isCurrentLevel = isNaN(currentData[1]),
+					x = d[0];
 
-				if(isNaN(currentData[1])) {
+				if(isCurrentLevel) {
 					offset[teamIndex] = currentData[0] - d[0];
 				}
-					
-				return (offset[teamIndex] != undefined) ? xScale(d[0] + offset[teamIndex]) : xScale(d[0]);
+				
+				if(offset[teamIndex] != undefined) {
+					var shifted = x + offset[teamIndex];
+					// if next level should start in past, must be shifted to present (as same as all next level)
+					if(!isCurrentLevel && shifted < time) {
+						offset[teamIndex] += (time - shifted);
+						shifted = time;
+					}
+					x = shifted;
+				}
+
+				return xScale(x);
 			});
 	}
 }
@@ -260,10 +249,12 @@ d3.json("data/game-plan.json", function(data) {
 // TODO: clean it and make it nice
 d3.json("data/game-data.json", function(data) {
 	var gamedata = data,
-		colors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"];
+		colors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
+		icons = { "hint" : "\uf111", "solution" : "\uf00c", "skip" : "\uf00d" };
 	visualization.drawData({
 		data: gamedata,
 		colors: colors,
+		icons: icons,
 		time: gamedata.time
 	});
 });
