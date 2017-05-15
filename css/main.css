@@ -1,3 +1,9 @@
+/* chart properties */
 .chart { margin: 0 auto; width: 900px; }
+
+/* axes */
 .axis .tick line { stroke: transparent; }
 .axis .domain { stroke: transparent; }
+
+/* timeline */
+.timeline { stroke: #2f2f2f; }
