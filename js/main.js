@@ -4,9 +4,10 @@ var visualization = {
 		colors = config.colors,
 		plandata = config.data,
 		time = config.time,
-		padding = { top: 20, right: 100, bottom: 20, left: 80 },
+		padding = { top: 50, right: 20, bottom: 20, left: 80 },
 		width = 1000 - padding.left - padding.right,
 		height = 400 - padding.top - padding.bottom,
+		timeWidth = 130,
 		xScale = d3.scaleLinear().rangeRound([0, width]),
 		yScale = d3.scaleBand().rangeRound([height, 0]).padding(0.02),
 		xAxis = d3.axisBottom(xScale),
@@ -50,7 +51,7 @@ var visualization = {
 			.attr("height", "4")
 			.attr("transform", "translate(0,0)")
 			.attr("fill", function(d, i) { return getColor(i); })
-			.attr("opacity", "0.3");
+			.attr("opacity", "0.5");
 
 		// create segment column for each level
 		planLayers = plan.selectAll(".plan-layer")
@@ -98,6 +99,13 @@ var visualization = {
 			.attr("x2", xScale(time)+2)
 			.attr("y2", height)
 			.attr("stroke-width", 3);
+
+		// append time
+		timeText = svg.append("text")
+			.attr("class", "time")
+			.attr("x", width-timeWidth)
+			.attr("y", -20)
+			.text(getTimeString(time))
 	},
 	drawData: function(config) {
 		time = config.time,
@@ -149,6 +157,9 @@ var visualization = {
 		// update time line
 		 timeline.attr("x1", xScale(time)+2)
 		 	.attr("x2", xScale(time)+2);
+
+		// update time
+		timeText.text(getTimeString(time));
 
 		// update plan according to actual data
 		this.updatePlan(layers);
@@ -258,3 +269,9 @@ d3.json("data/game-data.json", function(data) {
 		time: gamedata.time
 	});
 });
+
+function getTimeString(seconds) {
+	var date = new Date(null);
+    date.setSeconds(seconds);
+    return date.toISOString().substr(11, 8)
+}

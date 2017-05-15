@@ -1,3 +1,5 @@
+body { font-family: 'Source Sans Pro', sans-serif; }
+
 /* chart properties */
 .chart { margin: 15vh auto; width: 1000px; }
 
@@ -10,3 +12,6 @@
 
 /* icons */
 .icon, .events { font-family: 'FontAwesome'; }
+
+/* time */
+.time { font-size: 2.5em; }
