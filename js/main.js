@@ -258,16 +258,65 @@ d3.json("data/game-plan.json", function(data) {
 // TODO: some callback when plan is drawn?
 // TODO: styles attributes to classes
 // TODO: clean it and make it nice
-d3.json("data/game-data.json", function(data) {
+d3.csv("data/user_events_log.csv", function(d) {
+	var levelKey = "level" + d.level,
+		events = {};
+	return {
+		"team" : d.uco,
+		"event" : d.event,
+		"level" : d.level,
+		"time" : d.time
+	};
+
+}, function(data) {
+	console.log(JSON.stringify(data));
+
+	var dataByTeam = d3.nest()
+		.key(function(d) { return d.team; })
+		.rollup(function(teamEvents) {
+			var data = {};
+			var events = [];
+			teamEvents.forEach(function(teamEvent) {
+				if(teamEvent.event == "Game started") {
+					levelKey = "level" + teamEvent.level;
+					data[levelKey] = teamEvent.time;
+				} else {
+					var event = {
+						"type" : "hint",
+						"name" : teamEvent.event,
+						"time" : teamEvent.time
+					}
+					events.push(event);
+				}
+			});
+			data.events = events;
+			return data;
+		})
+		.entries(data);
+
+	console.log(JSON.stringify(dataByTeam));
+
 	var gamedata = data,
 		colors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
 		icons = { "hint" : "\uf111", "solution" : "\uf00c", "skip" : "\uf00d" };
-	visualization.drawData({
+	/*visualization.drawData({
 		data: gamedata,
 		colors: colors,
 		icons: icons,
 		time: gamedata.time
-	});
+	});*/
+});
+
+d3.json("data/game-data.json", function(data) {
+	var gamedata = data,
+		colors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
+		icons = { "hint" : "\uf111", "solution" : "\uf00c", "skip" : "\uf00d" };
+	/*visualization.drawData({
+		data: gamedata,
+		colors: colors,
+		icons: icons,
+		time: gamedata.time
+	});*/
 });
 
 function getTimeString(seconds) {
