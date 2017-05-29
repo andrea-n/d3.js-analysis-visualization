@@ -6,7 +6,7 @@ var visualization = {
 		time = config.time,
 		padding = { top: 50, right: 20, bottom: 20, left: 80 },
 		width = 1000 - padding.left - padding.right,
-		height = 400 - padding.top - padding.bottom,
+		height = 600 - padding.top - padding.bottom,
 		timeWidth = 130,
 		xScale = d3.scaleLinear().rangeRound([0, width]),
 		yScale = d3.scaleBand().rangeRound([height, 0]).padding(0.02),
@@ -105,7 +105,7 @@ var visualization = {
 			.attr("class", "time")
 			.attr("x", width-timeWidth)
 			.attr("y", -20)
-			.text(getTimeString(time))
+			.text(getTimeString(time));
 	},
 	drawData: function(config) {
 		time = config.time,
@@ -212,7 +212,6 @@ var visualization = {
 				var levelIndex = d3.select(this.parentNode).datum().index,
 					teamIndex = i,
 					currentData = layersdata[levelIndex][teamIndex];
-
 				if(isNaN(currentData[1])) {
 					working[teamIndex] = true;
 				}
@@ -244,7 +243,7 @@ var visualization = {
 	}
 }
 
-d3.json("data/game-plan.json", function(data) {
+/*d3.json("data/game-plan.json", function(data) {
 	var plandata = data,
 		colors = ["#0e6f90", "#158136", "#ec7e26", "#d82f36"];
 	visualization.drawPlan({
@@ -254,71 +253,101 @@ d3.json("data/game-plan.json", function(data) {
 		time: 0
 	});
 });
+*/
 
 // TODO: some callback when plan is drawn?
 // TODO: styles attributes to classes
 // TODO: clean it and make it nice
-d3.csv("data/user_events_log.csv", function(d) {
-	var levelKey = "level" + d.level,
-		events = {};
-	return {
-		"team" : d.uco,
-		"event" : d.event,
-		"level" : d.level,
-		"time" : d.time
-	};
+d3.csv("data/user_events_log.csv",
+	function(d) {
+		var levelKey = "level" + d.level,
+			events = {};
+		return {
+			"team" : d.uco,
+			"event" : d.event,
+			"level" : d.level,
+			"time" : d.time
+		};
+	}, function(data) {
+		var levelTimePlan = 1000;
 
-}, function(data) {
-	//console.log(JSON.stringify(data));
+		var gamedataset = [],
+			plandataset = [],
+			levels = [],
+			time =  0,
+			teamsMap = {};
+		data.forEach(function(d) {
+			var eventTime = getSeconds(d.time),
+				levelKey = "level" + d.level;
 
-	var dataByTeam = {},
-		levels = [],
-		time =  0;
-	data.forEach(function(d) {
-		var eventTime = getSeconds(d.time),
-			levelKey = "level" + d.level;
+			if(teamsMap[d.team] == null) {
+				teamsMap[d.team] = gamedataset.length;
+				gamedataset[teamsMap[d.team]] = {};
+				gamedataset[teamsMap[d.team]]["team"] = d.team;
+				gamedataset[teamsMap[d.team]]["events"] = [];
 
-		if(dataByTeam[d.team] == null) {
-			dataByTeam[d.team] = {};
-			dataByTeam[d.team]["team"] = d.team;
-			dataByTeam[d.team]["events"] = [];
-		}
+				plandataset[teamsMap[d.team]] = {};
+				plandataset[teamsMap[d.team]]["team"] = d.team;
+			}	
 
-		if(levels.indexOf(levelKey)  == -1) levels.push(levelKey);
+			if(levels.indexOf(levelKey)  == -1) levels.push(levelKey);
 
-		if(time < eventTime) time = eventTime;
+			if(time < eventTime) time = eventTime;
 
-		if(d.event == "Game started") {
-			
-			dataByTeam[d.team][levelKey] = eventTime;
-		} else {
-			var event = {
-				"type" : "hint",
-				"name" : d.event,
-				"time" : eventTime
+			if(d.event == "Game started") {
+				
+				gamedataset[teamsMap[d.team]][levelKey] = eventTime;
+			} else {
+				var event = {
+					"type" : "hint",
+					"name" : d.event,
+					"time" : eventTime
+				}
+				gamedataset[teamsMap[d.team]]["events"].push(event);
 			}
-			dataByTeam[d.team]["events"].push(event);
+		});
+
+		plandataset.forEach(function(team) {
+			var index = 1;
+			levels.forEach(function(level) {
+				team[level] = levelTimePlan*index;
+				index++;
+			});
+		});
+		
+
+		var game = {
+			"time" : time,
+			"keys" : levels,
+			"teams" : gamedataset
 		}
-	});
 
-	var dataset = {
-		"time" : time,
-		"keys" : levels,
-		"teams" : dataByTeam
+		var plan = {
+			"keys" : levels,
+			"teams" : plandataset
+		}
+		
+		var gamedata = game,
+			colors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
+			icons = { "hint" : "\uf111", "solution" : "\uf00c", "skip" : "\uf00d" };
+
+		var plandata = plan,
+		colors = ["#0e6f90", "#158136", "#ec7e26", "#d82f36"];
+
+		visualization.drawPlan({
+			data: plandata,
+			element: 'chart',
+			colors: colors,
+			time: 0
+		});
+		visualization.drawData({
+			data: gamedata,
+			colors: colors,
+			icons: icons,
+			time: gamedata.time
+		});
 	}
-	
-	//console.log(JSON.stringify(dataset));
-
-	var gamedata = dataset,
-		colors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
-		icons = { "hint" : "\uf111", "solution" : "\uf00c", "skip" : "\uf00d" };
-	visualization.drawData({
-		data: gamedata,
-		colors: colors,
-		icons: icons,
-		time: gamedata.time
-	});
-});
+);
 
 d3.json("data/game-data.json", function(data) {
 	var gamedata = data,

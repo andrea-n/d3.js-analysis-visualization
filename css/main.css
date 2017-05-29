@@ -1,7 +1,7 @@
 body { font-family: 'Source Sans Pro', sans-serif; }
 
 /* chart properties */
-.chart { margin: 15vh auto; width: 1000px; }
+.chart { margin: 5vh auto; width: 1000px; }
 
 /* axes */
 .axis .tick line { stroke: transparent; }
