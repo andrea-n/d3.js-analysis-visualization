@@ -269,42 +269,55 @@ d3.csv("data/user_events_log.csv", function(d) {
 	};
 
 }, function(data) {
-	console.log(JSON.stringify(data));
+	//console.log(JSON.stringify(data));
 
-	var dataByTeam = d3.nest()
-		.key(function(d) { return d.team; })
-		.rollup(function(teamEvents) {
-			var data = {};
-			var events = [];
-			teamEvents.forEach(function(teamEvent) {
-				if(teamEvent.event == "Game started") {
-					levelKey = "level" + teamEvent.level;
-					data[levelKey] = teamEvent.time;
-				} else {
-					var event = {
-						"type" : "hint",
-						"name" : teamEvent.event,
-						"time" : teamEvent.time
-					}
-					events.push(event);
-				}
-			});
-			data.events = events;
-			return data;
-		})
-		.entries(data);
+	var dataByTeam = {},
+		levels = [],
+		time =  0;
+	data.forEach(function(d) {
+		var eventTime = getSeconds(d.time),
+			levelKey = "level" + d.level;
 
-	console.log(JSON.stringify(dataByTeam));
+		if(dataByTeam[d.team] == null) {
+			dataByTeam[d.team] = {};
+			dataByTeam[d.team]["team"] = d.team;
+			dataByTeam[d.team]["events"] = [];
+		}
 
-	var gamedata = data,
+		if(levels.indexOf(levelKey)  == -1) levels.push(levelKey);
+
+		if(time < eventTime) time = eventTime;
+
+		if(d.event == "Game started") {
+			
+			dataByTeam[d.team][levelKey] = eventTime;
+		} else {
+			var event = {
+				"type" : "hint",
+				"name" : d.event,
+				"time" : eventTime
+			}
+			dataByTeam[d.team]["events"].push(event);
+		}
+	});
+
+	var dataset = {
+		"time" : time,
+		"keys" : levels,
+		"teams" : dataByTeam
+	}
+	
+	//console.log(JSON.stringify(dataset));
+
+	var gamedata = dataset,
 		colors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
 		icons = { "hint" : "\uf111", "solution" : "\uf00c", "skip" : "\uf00d" };
-	/*visualization.drawData({
+	visualization.drawData({
 		data: gamedata,
 		colors: colors,
 		icons: icons,
 		time: gamedata.time
-	});*/
+	});
 });
 
 d3.json("data/game-data.json", function(data) {
@@ -323,4 +336,9 @@ function getTimeString(seconds) {
 	var date = new Date(null);
     date.setSeconds(seconds);
     return date.toISOString().substr(11, 8)
+}
+
+function getSeconds(timeString) {
+	var s = timeString.split(':');
+	return (+s[0]) * 3600 + (+s[1]) * 60 + (+s[2]); 
 }
