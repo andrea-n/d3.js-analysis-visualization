@@ -194,13 +194,17 @@ var visualization = {
             		level = 0,
             		durationSum = 0;
             	//TODO black color for current ("working") level
-            	gamedata.keys.forEach(function(levelKey) {
+            	gamedata.keys.forEach(function(levelKey, i) {
             		var duration = parseInt(data[levelKey]);
                     if (!duration) return;
                     durationSum += duration;
-                    if (d.time <= durationSum) return;
+                    if (d.time <= durationSum) {
+                    	// level found
+                    	return;
+                    }
                     level += 1;
                 });
+                if(level == -1) return "#000";
             	return getColor(level);
             })
             .attr("font-family","FontAwesome")
@@ -333,7 +337,9 @@ d3.csv("data/user_events_log.csv",
 					gamedataset[teamsMap[d.team]][levelKey] = eventTime;
 					break;
 				default:
-					type = "hint";
+					if(d.event.substr(0,4) == 'Hint')
+						type = "hint";
+					else type = null;
 					break;
 			}
 
@@ -341,7 +347,7 @@ d3.csv("data/user_events_log.csv",
 				var event = {
 					"type" : type,
 					"name" : d.event,
-					"time" : eventTime
+					"time" : eventTime + gamedataset[teamsMap[d.team]]["level" + (d.level-1)]
 				}
 				gamedataset[teamsMap[d.team]]["events"].push(event);
 			}		
