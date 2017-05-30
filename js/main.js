@@ -124,7 +124,9 @@ var visualization = {
 		gameDomain = d3.max(layers[layers.length - 1], function(d) { return d[1]; });
 
 		// TODO rescale graph when needed (gameDomain > planDomain)
-		xScale.domain([0, Math.max(planDomain, gameDomain)]);
+		if(!isNaN(gameDomain)) {
+			xScale.domain([0, Math.max(planDomain, gameDomain)]);
+		}
 
 		// create segment column for each level
 		var layer = svg.selectAll(".game-layer")
@@ -134,6 +136,7 @@ var visualization = {
 			.attr("fill", function(d, i) { return getColor(i); })
 
 		// draw segment for each team
+		var working = [];
 		layer.selectAll("rect.game-segment")
 		  .data(function(d) { return d; })
 		  .enter().append("rect")
@@ -142,14 +145,20 @@ var visualization = {
 		  	return xScale(d[0]);
 		  })
 		  .attr("height", yScale.bandwidth())
-		  .attr("width", function(d) {
+		  .attr("width", function(d, i) {
 		  	// TODO better?
 		  	if(isNaN(d[1])) {
-		  		return xScale(time) - xScale(d[0]);
+		  		if(working[i]) {
+		  			return 0;
+		  		}
+		  		else {
+		  			working[i] = true;
+		  			return xScale(time) - xScale(d[0]);
+		  		}
 		  	}
 		  	else {
 		  		d3.select(this).attr("class", "game-segment-finished")
-		  						.attr("opacity", "0.3");
+		  			.attr("opacity", "0.3");
 		  		return xScale(d[1]) - xScale(d[0]);
 		  	}
 		  });
@@ -174,7 +183,7 @@ var visualization = {
         	.data(function(d, i) { return d.events; })
         	.enter().append("text")
             .attr("x", function(d) {
-            	return xScale(d.time) - yScale.bandwidth()*0.7;
+            	return Math.max(0, xScale(d.time) - yScale.bandwidth()*0.5);
             })
             .attr("y", function(d) {
             	return yScale(d3.select(this.parentNode).datum().team) + yScale.bandwidth()*0.7;
@@ -213,9 +222,13 @@ var visualization = {
 					teamIndex = i,
 					currentData = layersdata[levelIndex][teamIndex];
 				if(isNaN(currentData[1])) {
-					working[teamIndex] = true;
+					if(working[teamIndex]) { return 0; }
+					else {
+						working[teamIndex] = true;
+						return 1;
+					}	
 				}
-				return (working[teamIndex]) ? 1 : 0;
+				else { return 0; }
 			})
 			.attr("x", function(d, i) {
 				var levelIndex = d3.select(this.parentNode).datum().index,
@@ -223,9 +236,9 @@ var visualization = {
 					currentData = layersdata[levelIndex][teamIndex],
 					isCurrentLevel = isNaN(currentData[1]),
 					x = d[0];
-
 				if(isCurrentLevel) {
 					offset[teamIndex] = currentData[0] - d[0];
+					
 				}
 				
 				if(offset[teamIndex] != undefined) {
@@ -237,8 +250,7 @@ var visualization = {
 					}
 					x = shifted;
 				}
-
-				return xScale(x);
+				return xScale(Math.max(1,x));
 			});
 	}
 }
@@ -265,21 +277,27 @@ d3.csv("data/user_events_log.csv",
 		return {
 			"team" : d.uco,
 			"event" : d.event,
-			"level" : d.level,
+			"level" : parseInt(d.level),
 			"time" : d.time
 		};
 	}, function(data) {
-		var levelTimePlan = 1000;
+		// TODO time plan for each level?
+		var levelTimePlan = 1300;
 
 		var gamedataset = [],
 			plandataset = [],
+			// stores levels keys for use in d3.stack
 			levels = [],
+			// to get the highest time as current time
 			time =  0,
+			// map for keys (team id) to game/plan datasets, because datasets must be arrays to use in d3.stack
 			teamsMap = {};
 		data.forEach(function(d) {
 			var eventTime = getSeconds(d.time),
-				levelKey = "level" + d.level;
+				levelKey = "level" + d.level
+				type = null;
 
+			// if the team is not in dataset yet, it is added to game/plan datasets and map
 			if(teamsMap[d.team] == null) {
 				teamsMap[d.team] = gamedataset.length;
 				gamedataset[teamsMap[d.team]] = {};
@@ -290,28 +308,48 @@ d3.csv("data/user_events_log.csv",
 				plandataset[teamsMap[d.team]]["team"] = d.team;
 			}	
 
+			// add level to levels array, if it it does not contain it
 			if(levels.indexOf(levelKey)  == -1) levels.push(levelKey);
 
 			if(time < eventTime) time = eventTime;
 
-			if(d.event == "Game started") {
-				
-				gamedataset[teamsMap[d.team]][levelKey] = eventTime;
-			} else {
+			// according to type of event, add it to events array of the team and/or store the time of level end
+			switch(d.event) {
+				case "Game started":
+					// start at 0 time, not added to structure
+					type = null;
+					break;
+				case "Returned from help level":
+					type = "solution";
+					break;
+				case "Correct flag submited":
+					type = null;
+					// level is finished, save the time
+					gamedataset[teamsMap[d.team]][levelKey] = eventTime;
+					break;
+				case "Level cowardly skipped":
+					type = "skip";
+					// level is finished, save the time
+					gamedataset[teamsMap[d.team]][levelKey] = eventTime;
+					break;
+				default:
+					type = "hint";
+					break;
+			}
+
+			if(type != null) {
 				var event = {
-					"type" : "hint",
+					"type" : type,
 					"name" : d.event,
 					"time" : eventTime
 				}
 				gamedataset[teamsMap[d.team]]["events"].push(event);
-			}
+			}		
 		});
 
 		plandataset.forEach(function(team) {
-			var index = 1;
 			levels.forEach(function(level) {
-				team[level] = levelTimePlan*index;
-				index++;
+				team[level] = levelTimePlan;
 			});
 		});
 		
@@ -326,23 +364,23 @@ d3.csv("data/user_events_log.csv",
 			"keys" : levels,
 			"teams" : plandataset
 		}
-		
+		console.log(JSON.stringify(game));
 		var gamedata = game,
-			colors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
+			gameColors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
 			icons = { "hint" : "\uf111", "solution" : "\uf00c", "skip" : "\uf00d" };
 
 		var plandata = plan,
-		colors = ["#0e6f90", "#158136", "#ec7e26", "#d82f36"];
+			planColors = ["#0e6f90", "#158136", "#ec7e26", "#d82f36"];
 
 		visualization.drawPlan({
 			data: plandata,
 			element: 'chart',
-			colors: colors,
+			colors: planColors,
 			time: 0
 		});
 		visualization.drawData({
 			data: gamedata,
-			colors: colors,
+			colors: gameColors,
 			icons: icons,
 			time: gamedata.time
 		});
