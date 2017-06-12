@@ -111,7 +111,6 @@ var visualization = {
 		time = config.time,
 		gamedata = config.data;
 		icons = config.icons;
-		console.log(gamedata);
 		var colors = config.colors,
 			getColor = d3.scaleOrdinal(colors);
 
@@ -157,7 +156,6 @@ var visualization = {
 		  		}
 		  	}
 		  	else {
-		  		console.log(i);
 		  		var opacity = (d.data.level == 0) ? 0 : 0.3;
 		  		d3.select(this).attr("class", "game-segment-finished")
 		  			.attr("opacity", "0.3");
@@ -281,32 +279,32 @@ var visualization = {
 var startTime = 0;
 d3.csv("data/user_events_log.csv",
 	function(d, i) {
-		var datetime = new Date(d.datetime);
-		if((i == 0) || (d.event == "Game started" && parseInt(d.level) == 1 && startTime > datetime.getTime())) {
-			startTime = datetime.getTime();
+		var datetime = new Date(d.datetime),
+			timestamp = datetime.getTime()/1000;
+		if((i == 0) || (d.event == "Game started" && parseInt(d.level) == 1 && startTime > timestamp)) {
+			startTime = timestamp;
 		}
-
 		return {
 			"team" : d.uco,
 			"event" : d.event,
 			"level" : parseInt(d.level),
 			"time" : getSeconds(d.time),
-			"datetime" : datetime.getTime()
+			"timestamp" : timestamp
 		};
 	}, function(data) {
 		// TODO time plan for each level?
-		var levelTimePlan = 1300;
+		var levelTimePlan = 1000;
 
 		var gamedataset = [],
 			plandataset = [],
-			// stores levels keys for use in d3.stack
-			levels = ["level0"],
+			// stores levels keys for use in d3.stack, in format "level + index" or "start" for start of the game
+			levels = ["start"],
 			// to get the highest time as current time
 			time =  0,
 			// map for keys (team id) to game/plan datasets, because datasets must be arrays to use in d3.stack
 			teamsMap = {};
 		data.forEach(function(d) {
-			var eventTime = d.time,
+			var eventTime = Math.max(0, d.timestamp - startTime),
 				levelKey = "level" + d.level
 				type = null;
 
@@ -319,13 +317,22 @@ d3.csv("data/user_events_log.csv",
 
 				plandataset[teamsMap[d.team]] = {};
 				plandataset[teamsMap[d.team]]["team"] = d.team;
-				plandataset[teamsMap[d.team]]["level0"] = startTime;
-			}	
+				plandataset[teamsMap[d.team]]["start"] = 0;
+			}
+
+			// delete possibly recorded higher levels from some previous game
+			var tmpLevel = d.level+1;
+			while((gamedataset[teamsMap[d.team]]["level" + tmpLevel] != undefined) && (tmpLevel < levels.length)) {
+				delete gamedataset[teamsMap[d.team]]["level" + tmpLevel];
+				console.log(gamedataset[teamsMap[d.team]]);
+				tmpLevel++;
+				console.log(tmpLevel-1);
+			}
 
 			// add level to levels array, if it does not contain it
 			if(levels.indexOf(levelKey)  == -1) levels.push(levelKey);
 
-			if(time < d.datetime) time = d.datetime;
+			if(time < d.timestamp) time = d.timestamp;
 
 			// according to type of event, add it to events array of the team and/or store the time of level end
 			switch(d.event) {
@@ -334,7 +341,7 @@ d3.csv("data/user_events_log.csv",
 					type = null;
 					if(d.level == 1) {
 						//if the first level started, save start of game as level 0 end
-						gamedataset[teamsMap[d.team]]["level0"] = Math.max(0, d.datetime - startTime);
+						gamedataset[teamsMap[d.team]]["start"] = eventTime;
 					}
 					break;
 				case "Returned from help level":
@@ -343,12 +350,12 @@ d3.csv("data/user_events_log.csv",
 				case "Correct flag submited":
 					type = null;
 					// level is finished, save the time (shifted by start time)
-					gamedataset[teamsMap[d.team]][levelKey] = eventTime + gamedataset[teamsMap[d.team]]["level0"];
+					gamedataset[teamsMap[d.team]][levelKey] = d.time;
 					break;
 				case "Level cowardly skipped":
 					type = "skip";
 					// level is finished, save the time
-					gamedataset[teamsMap[d.team]][levelKey] = eventTime + gamedataset[teamsMap[d.team]]["level0"];;
+					gamedataset[teamsMap[d.team]][levelKey] = d.time;
 					break;
 				default:
 					if(d.event.substr(0,4) == 'Hint')
@@ -361,7 +368,7 @@ d3.csv("data/user_events_log.csv",
 				var event = {
 					"type" : type,
 					"name" : d.event,
-					"time" : eventTime + gamedataset[teamsMap[d.team]]["level" + (d.level-1)]
+					"time" : eventTime
 				}
 				gamedataset[teamsMap[d.team]]["events"].push(event);
 			}		
@@ -369,13 +376,13 @@ d3.csv("data/user_events_log.csv",
 
 		plandataset.forEach(function(team) {
 			levels.forEach(function(level) {
-				team[level] = levelTimePlan;
+				team[level] = (level != "start") ? levelTimePlan : 0;
 			});
 		});
 		
 
 		var game = {
-			"time" : time,
+			"time" : time - startTime,
 			"keys" : levels,
 			"teams" : gamedataset
 		}
@@ -385,18 +392,20 @@ d3.csv("data/user_events_log.csv",
 			"teams" : plandataset
 		}
 		console.log(JSON.stringify(game));
+		console.log(JSON.stringify(plan));
+		// level 0 transparent color, other modulo i (transparent exlude)
 		var gamedata = game,
 			gameColors = ["transparent", "#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
 			icons = { "hint" : "\uf111", "solution" : "\uf00c", "skip" : "\uf00d" };
-
+		// level 0 transparent color, other modulo i (transparent exlude)
 		var plandata = plan,
-			planColors = ["#0e6f90", "#158136", "#ec7e26", "#d82f36"];
+			planColors = ["transparent", "#0e6f90", "#158136", "#ec7e26", "#d82f36"];
 
 		visualization.drawPlan({
 			data: plandata,
 			element: 'chart',
 			colors: planColors,
-			time: 0
+			time: 0,
 		});
 		visualization.drawData({
 			data: gamedata,
@@ -406,18 +415,6 @@ d3.csv("data/user_events_log.csv",
 		});
 	}
 );
-
-d3.json("data/game-data.json", function(data) {
-	var gamedata = data,
-		colors = ["#1c89b8", "#20ac4c", "#ff9d3c", "#fc5248"],
-		icons = { "hint" : "\uf111", "solution" : "\uf00c", "skip" : "\uf00d" };
-	/*visualization.drawData({
-		data: gamedata,
-		colors: colors,
-		icons: icons,
-		time: gamedata.time
-	});*/
-});
 
 function getTimeString(seconds) {
 	var date = new Date(null);
