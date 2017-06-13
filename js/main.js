@@ -183,29 +183,18 @@ var visualization = {
         	.data(function(d, i) { return d.events; })
         	.enter().append("text")
             .attr("x", function(d) {
-            	return Math.max(0, xScale(d.time) - yScale.bandwidth()*0.5);
+            	// if solution or skip, shift the icon before the bounds of levels (to previous level)
+            	var x = xScale(d.time);
+            	if(d.type != "hint") {
+            		x -=  yScale.bandwidth()*0.5;
+            	}
+            	return Math.max(0, x);
             })
             .attr("y", function(d) {
             	return yScale(d3.select(this.parentNode).datum().team) + yScale.bandwidth()*0.7;
             })
             .attr("fill", function(d, i) {
-            	var team = d3.select(this.parentNode).datum().team,
-            		data = d3.select(this.parentNode).datum(),
-            		level = 0,
-            		durationSum = 0;
-            	//TODO black color for current ("working") level
-            	gamedata.keys.forEach(function(levelKey, i) {
-            		var duration = parseInt(data[levelKey]);
-                    if (!duration) return;
-                    durationSum += duration;
-                    if (d.time <= durationSum) {
-                    	// level found
-                    	return;
-                    }
-                    level += 1;
-                });
-                if(level == -1) return "#000";
-            	return getColor(level);
+            	return getColor(d.level);
             })
             .attr("font-family","FontAwesome")
             .attr('font-size', function(d) { return yScale.bandwidth()/2; } )
@@ -324,10 +313,10 @@ d3.csv("data/user_events_log.csv",
 			var tmpLevel = d.level+1;
 			while((gamedataset[teamsMap[d.team]]["level" + tmpLevel] != undefined) && (tmpLevel < levels.length)) {
 				delete gamedataset[teamsMap[d.team]]["level" + tmpLevel];
-				console.log(gamedataset[teamsMap[d.team]]);
 				tmpLevel++;
-				console.log(tmpLevel-1);
 			}
+			// if there was some previous data, delete also its events
+			if(tmpLevel > (d.level+1)) gamedataset[teamsMap[d.team]]["events"] = [];
 
 			// add level to levels array, if it does not contain it
 			if(levels.indexOf(levelKey)  == -1) levels.push(levelKey);
@@ -368,7 +357,8 @@ d3.csv("data/user_events_log.csv",
 				var event = {
 					"type" : type,
 					"name" : d.event,
-					"time" : eventTime
+					"time" : eventTime,
+					"level" : d.level
 				}
 				gamedataset[teamsMap[d.team]]["events"].push(event);
 			}		
